@@ -26,17 +26,22 @@
 
 (defn analyze-list [ctx expr]
   (let [children (:children expr)
-        snd (second children)]
-    (if-let [k (:k snd)]
-      (if (or (identical? :<< k)
-              (identical? :when k)
-              (identical? :guard k))
-        ;; https://github.com/clojure/core.match/blob/fb3188934ab9b6df0249ba3092a888def3434eee/src/main/clojure/clojure/core/match.clj#L1835
-        (let [bnds (analyze-expr ctx (first children))]
-          (common/analyze-expression** ctx (first (nnext children)))
-          bnds)
+        [fst snd & rst] children]
+    (if-let [k (:k fst)]
+      (if (identical? :or k)
+        (let [exprs (cons snd rst)]
+          (into {} (map #(analyze-expr ctx %)) exprs))
         (analyze-children ctx expr))
-      (analyze-children ctx expr))))
+      (if-let [k (:k snd)]
+        (if (or (identical? :<< k)
+                (identical? :when k)
+                (identical? :guard k))
+          ;; https://github.com/clojure/core.match/blob/fb3188934ab9b6df0249ba3092a888def3434eee/src/main/clojure/clojure/core/match.clj#L1835
+          (let [bnds (analyze-expr ctx fst)]
+            (common/analyze-expression** ctx (first rst))
+            bnds)
+          (analyze-children ctx expr))
+        (analyze-children ctx expr)))))
 
 (defn analyze-vector [ctx expr]
   (let [children (:children expr)]
@@ -77,6 +82,7 @@
     (common/analyze-expression** ctx pattern)
     (doseq [[clause ret] (partition 2 clauses)]
       (let [bindings (analyze-expr ctx clause)
+            _ (prn :bindings bindings ret)
             ctx (if bindings
                   (utils/ctx-with-bindings ctx bindings)
                   ctx)]
