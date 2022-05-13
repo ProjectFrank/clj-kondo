@@ -121,7 +121,7 @@
     lifted))
 
 #_(defmacro macroexpand [macro node]
-  `(clj-kondo.hooks-api/-macroexpand (deref (var ~macro)) ~node))
+    `(clj-kondo.hooks-api/-macroexpand (deref (var ~macro)) ~node))
 
 (def ans (sci/create-ns 'clj-kondo.hooks-api nil))
 
@@ -145,23 +145,25 @@
    'ns-analysis ns-analysis
    })
 
-(def sci-ctx
+(defn new-ctx []
   (sci/init {:namespaces {'clojure.core {'time (with-meta time* {:sci/macro true})}
-                          'clj-kondo.hooks-api api-ns}
-             :classes {'java.io.Exception Exception
-                       'java.lang.System System}
-             :imports {'Exception 'java.io.Exception
-                       'System java.lang.System}
-             :load-fn (fn [{:keys [:namespace]}]
-                        (let [^String ns-str (munge (name namespace))
-                              base-path (.replace ns-str "." "/")
-                              base-path (str base-path ".clj")]
-                          (if-let [f (find-file-on-classpath base-path)]
-                            {:file (.getAbsolutePath f)
-                             :source (slurp f)}
-                            (binding [*out* *err*]
-                              (println "WARNING: file" base-path "not found while loading hook")
-                              nil))))}))
+                                     'clj-kondo.hooks-api api-ns}
+                        :classes {'java.io.Exception Exception
+                                  'java.lang.System System}
+                        :imports {'Exception 'java.io.Exception
+                                  'System java.lang.System}
+                        :load-fn (fn [{:keys [:namespace]}]
+                                   (let [^String ns-str (munge (name namespace))
+                                         base-path (.replace ns-str "." "/")
+                                         base-path (str base-path ".clj")]
+                                     (if-let [f (find-file-on-classpath base-path)]
+                                       {:file (.getAbsolutePath f)
+                                        :source (slurp f)}
+                                       (binding [*out* *err*]
+                                         (println "WARNING: file" base-path "not found while loading hook")
+                                         nil))))}))
+(def sci-ctx
+  (volatile! (new-ctx)))
 
 (defn memoize-without-ctx
   [f]
@@ -180,7 +182,8 @@
         (fn [ctx config ns-sym var-sym]
           (try (let [sym (symbol (str ns-sym)
                                  (str var-sym))
-                     hook-cfg (:hooks config)]
+                     hook-cfg (:hooks config)
+                     sci-ctx @sci-ctx]
                  (when hook-cfg
                    (if-let [x (get-in hook-cfg [:analyze-call sym])]
                      ;; we return a function of ctx, so we will never memoize on
