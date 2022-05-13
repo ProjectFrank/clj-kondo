@@ -331,11 +331,60 @@ There are several special cases to watch out for when using the `:macroexpand` f
 
 Here are some tips and tricks for developing hooks.
 
-### Debugging
+### Developing
+
+Write code, configure and start linting examples, until you are satisfied with
+the result.
 
 For debugging the output of a hook function, you can use `println` or `prn`. To
 get a sense of what a newly generated node looks like, you can use `(prn
 (api/sexpr node))`.
+
+To execute hook code on examples, you can either invoke clj-kondo from the
+command line or from Clojure (in a REPL).
+
+Given this project example:
+
+`.clj-kondo/config.edn`:
+
+``` clojure
+{:hooks {:analyze-call {foo/bar foo/bar}}}
+```
+
+`.clj-kondo/foo.clj`
+``` clojure
+(ns foo)
+
+(defn bar [{:keys [node]}]
+  (prn node))
+```
+
+`test.clj`
+```
+(ns test (:require [foo :refer [bar]]))
+
+(bar 1 2 3)
+```
+
+When invoked from the command line:
+
+``` shell
+$ clj-kondo --lint test.clj
+```
+
+you will see:
+
+```
+<list: (bar 1 2 3)>
+linting took 24ms, errors: 0, warnings: 0
+```
+
+From a Clojure JVM REPL:
+
+`src/user.clj`
+``` shell
+
+```
 
 ### Performance
 
