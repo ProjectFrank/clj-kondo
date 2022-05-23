@@ -17,6 +17,9 @@ jobs:
           - os: macos-12
             name: macos
             static: false
+          - os: osx-arm64
+            name: macos-arm64
+            static: false
          #- os: ubuntu-latest
          #  name: linux
          #  static: false
