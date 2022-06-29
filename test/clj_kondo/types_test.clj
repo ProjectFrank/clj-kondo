@@ -542,6 +542,44 @@
                    {x {:arities {1 {:args [{:op :keys, :req {:other-ns/thing :any
                                                              :some-ns/thing :any}}]}}}}}}}})))
 
+(deftest map-namespace-test
+  (testing "#::ns{:key :val} syntax"
+   (is (empty? (lint! "
+(ns test-ns (:require [some-ns :as s]))
+
+(defn x [y] y)
+(x #::s{:thing 1})"
+                      '{:linters
+                        {:type-mismatch
+                         {:level :error
+                          :namespaces
+                          {test-ns
+                           {x {:arities {1 {:args [{:op :keys, :req {:some-ns/thing :any}}]}}}}}}}}))))
+  (testing "#:ns{:key :val} syntax"
+   (is (empty? (lint! "
+(ns test-ns (:require [some-ns :as s]))
+
+(defn x [y] y)
+(x #:some-ns{:thing 1})"
+                      '{:linters
+                        {:type-mismatch
+                         {:level :error
+                          :namespaces
+                          {test-ns
+                           {x {:arities {1 {:args [{:op :keys, :req {:some-ns/thing :any}}]}}}}}}}}))))
+  (testing "{::ns/key :val} syntax"
+   (is (empty? (lint! "
+(ns test-ns (:require [some-ns :as s]))
+
+(defn x [y] y)
+(x {::s/thing 1})"
+                      '{:linters
+                        {:type-mismatch
+                         {:level :error
+                          :namespaces
+                          {test-ns
+                           {x {:arities {1 {:args [{:op :keys, :req {:some-ns/thing :any}}]}}}}}}}})))))
+
 (deftest if-let-test
   (assert-submaps
    '({:file "<stdin>", :row 1, :col 6, :level :error, :message "Expected: number, received: symbol or keyword."})
